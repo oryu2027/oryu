@@ -92,13 +92,16 @@ button,input{font-family:inherit}
 .mbtn[aria-pressed="true"]{background:var(--jade)}
 .mbtn[aria-pressed="true"] .ic-pause{display:block}
 .mbtn[aria-pressed="true"] .ic-play{display:none}
-.status{padding-right:180px}
+.status{padding-right:0}
 .backlink{position:fixed;z-index:30;top:calc(16px + env(safe-area-inset-top,0px));right:calc(max(16px,env(safe-area-inset-right,0px)) + 54px);
   display:inline-flex;align-items:center;gap:6px;height:36px;padding:0 14px;border-radius:999px;font-size:13.5px;font-weight:500;text-decoration:none;
   color:var(--fg);background:var(--card);border:1px solid var(--line);box-shadow:0 2px 10px rgba(0,0,0,.12)}
 .backlink:hover{border-color:var(--jade);color:var(--jade)}
 a.backlink.back{text-decoration:none}
-@media (max-width:560px){ .status{padding-right:0;padding-top:46px} .backlink span{display:none} }
+.backlink.restart{right:calc(max(16px,env(safe-area-inset-right,0px)) + 54px + 180px);font-family:inherit;cursor:pointer}
+.status{padding-right:0 !important;padding-top:48px}
+.tag-quit{display:inline-block;margin-left:6px;font-size:11px;font-weight:600;color:var(--miss);border:1px solid currentColor;border-radius:999px;padding:0 6px;vertical-align:1px}
+@media (max-width:560px){ .status{padding-right:0;padding-top:46px} .backlink span{display:none} .backlink.restart{right:calc(max(16px,env(safe-area-inset-right,0px)) + 54px + 52px)} }
 .card.wide{width:min(700px,100%)}
 .board{display:flex;flex-direction:column;gap:10px;border-top:1px solid var(--line);padding-top:14px}
 .board-head{display:flex;align-items:baseline;justify-content:space-between;gap:10px;flex-wrap:wrap}
@@ -174,6 +177,7 @@ label{font-size:13px;font-weight:500;color:var(--slate)}
   <svg class="ic-pause" viewBox="0 0 24 24" aria-hidden="true"><path d="M7 5h4v14H7zM13 5h4v14h-4z" fill="currentColor"/></svg>
 </button>
 <a class="backlink back" id="backlink" href="https://oryu2027.github.io/oryu/#games">← <span>브로셔로 돌아가기</span></a>
+<button class="backlink restart" id="btn-restart" type="button" hidden>↺ <span>처음으로</span></button>
 <main class="wrap" id="game" hidden>
   <div class="status">
     <div class="where"><small id="s-step">장소 1 / 5 · 닉네임</small><h2 id="s-place">오류고 전경</h2></div>
@@ -206,9 +210,18 @@ label{font-size:13px;font-weight:500;color:var(--slate)}
       <label for="nick">닉네임</label>
       <input id="nick" maxlength="12" autocomplete="off" placeholder="예: 2학년 매의눈">
       <span class="err" id="nick-err"></span>
-      <small class="ver">버전 2026-10-29 13:20 · 오른쪽 위 ▶ 버튼으로 배경 음악을 켜고 끌 수 있어요</small>
+      <small class="ver">버전 2026-10-29 16:40 · 오른쪽 위 ▶ 버튼으로 배경 음악을 켜고 끌 수 있어요</small>
       <div class="row"><button class="btn line" id="btn-board" type="button">참여 결과판</button><button class="btn main" id="btn-start" type="button">시작하기</button></div>
     </div>
+  </div></div>
+</div>
+
+<!-- restart confirm -->
+<div class="veil" id="v-restart" hidden>
+  <div class="card"><div class="band"></div><div class="in">
+    <h2 style="font-size:24px">처음 화면으로 돌아갈까요?</h2>
+    <p style="color:var(--slate)">지금까지 찾은 기록은 '중간 종료'로 결과판에 저장되고, 닉네임 화면에서 다시 도전할 수 있어요.</p>
+    <div class="row"><button class="btn line" id="btn-restart-no" type="button">계속하기</button><button class="btn main" id="btn-restart-yes" type="button">처음으로</button></div>
   </div></div>
 </div>
 
@@ -289,6 +302,8 @@ var SONGS=["data:audio/wav;base64,UklGRtLJCQBXQVZFZm10IBAAAAABAAEAIlYAAESsAAACAB
   })();
   window.__music=MUSIC;
   $('btn-music').addEventListener('click',function(){ MUSIC.toggle(); });
+  function placeRestart(){ var a=$('backlink'), b=$('btn-restart'); if(b.hidden) return; var r=a.getBoundingClientRect(); b.style.right=(window.innerWidth-r.left+8)+'px'; }
+  window.addEventListener('resize',placeRestart);
   MUSIC.scene(0);   // 첫 화면: 첫 곡 자동 재생 시도(막히면 화면을 처음 누를 때 재생)
 
   // ================= 참여 결과 모으기 =================
@@ -361,6 +376,7 @@ var SONGS=["data:audio/wav;base64,UklGRtLJCQBXQVZFZm10IBAAAAABAAEAIlYAAESsAAACAB
       lastRows.forEach(function(r,i){
         var tr=document.createElement('tr');
         [String(i+1), r.nick, 'Lv.'+r.level, r.cleared+' / '+r.placeTotal, r.found+' / '+r.total, fmt(r.sec), when(r.at)].forEach(function(v,j){ var td=document.createElement('td'); td.textContent=v; if(j===0) td.className='rk'; if(j===1) td.className='nk'; tr.appendChild(td); });
+        if(r.quit || /중간 종료/.test(r.levelName||'')){ var q=document.createElement('span'); q.className='tag-quit'; q.textContent='중간 종료'; tr.children[1].appendChild(q); }
         if(me && r.id===me){ tr.className='me'; meRow=tr; }
         t.tBodies[0].appendChild(tr);
       });
@@ -467,14 +483,61 @@ var SONGS=["data:audio/wav;base64,UklGRtLJCQBXQVZFZm10IBAAAAABAAEAIlYAAESsAAACAB
   (function(){ var href=/\.github\.io$/.test(location.hostname) ? 'index.html#games' : 'https://oryu2027.github.io/oryu/#games';
     Array.prototype.forEach.call(document.querySelectorAll('a.back'),function(a){ a.href=href; }); })();
 
+  // ---------- 게임 중간에 나가도 기록 남기기 ----------
+  var curMode='local'; mode().then(function(m){ curMode=m; });
+  function playing(){ return !!(st && !st.saved && !$('game').hidden); }
+  function buildRecord(partial){
+    var res=st.res.slice();
+    if(partial && !st.over && (st.el>0 || st.found.some(Boolean))){      // 하던 장소도 '못 끝냄'으로 넣기
+      var P=PLACES[st.i]; res.push({title:P.title, ok:false, got:st.found.filter(Boolean).length, tot:P.d.length, sec:Math.max(1,Math.round(st.el))});
+    }
+    var n=res.filter(function(r){return r.ok;}).length, L=levelOf(n), lv=LEVELS[L];
+    var per={}; res.forEach(function(r){ per[r.title]=r.got; });
+    return {id:'s'+Date.now().toString(36)+Math.random().toString(36).slice(2,7), game:'spot', nick:st.nick, level:L+1,
+      levelName: lv.name+(partial?' (중간 종료)':''), quit: !!partial,
+      cleared:n, placeTotal:PLACES.length, found:res.reduce(function(a,r){return a+r.got;},0), total:PLACES.length*5,
+      sec:res.reduce(function(a,r){return a+(r.sec||0);},0), at:new Date().toISOString(), day:dayKey(new Date()), per:per};
+  }
+  // 페이지를 떠나는 중에도 보낼 수 있는 방식으로 저장(구글 시트: sendBeacon, 이 기기: 바로 저장)
+  function saveLeaving(rec){
+    if(curMode==='sheet' && navigator.sendBeacon){ try{ if(navigator.sendBeacon(RESULT_URL,new Blob([JSON.stringify(rec)],{type:'text/plain;charset=utf-8'}))) return Promise.resolve(); }catch(e){} }
+    if(curMode==='local'){ var a=readLocal(); a.push(rec); try{ localStorage.setItem(LOCAL_KEY,JSON.stringify(a)); }catch(e){} return Promise.resolve(); }
+    return saveResult(rec);
+  }
+  function savePartial(){
+    if(!playing()) return Promise.resolve(false);
+    st.saved=true; clearInterval(timer); clearInterval(autoT);
+    if(!st.res.length && !st.found.some(Boolean) && st.el<3) return Promise.resolve(false);   // 시작하자마자 나가면 저장하지 않음
+    var rec=buildRecord(true);
+    return Promise.race([saveLeaving(rec).catch(function(){}), new Promise(function(r){ setTimeout(r,1500); })]).then(function(){ return true; });
+  }
+  // 게임 중 '브로셔로 돌아가기': 기록을 먼저 저장한 뒤 이동
+  $('backlink').addEventListener('click',function(e){
+    if(!playing()) return;
+    e.preventDefault(); var href=this.href; MUSIC.stop();
+    savePartial().then(function(){ location.href=href; });
+  });
+  // 창을 닫거나 다른 주소로 이동할 때
+  window.addEventListener('pagehide',function(){ if(playing()) savePartial(); });
+  // 게임 중 '처음으로': 확인 후 기록 저장, 닉네임 화면으로
+  $('btn-restart').addEventListener('click',function(){ if(playing()) $('v-restart').hidden=false; });
+  $('btn-restart-no').addEventListener('click',function(){ $('v-restart').hidden=true; });
+  $('btn-restart-yes').addEventListener('click',function(){
+    $('v-restart').hidden=true; var nick=st.nick;
+    savePartial().then(function(){
+      MUSIC.stop(); $('done').hidden=true; $('game').hidden=true; $('btn-restart').hidden=true;
+      $('v-start').hidden=false; $('nick').value=nick; $('nick-err').textContent=''; $('nick').focus(); MUSIC.scene(0);
+    });
+  });
+
   function levelOf(n){ var L=0; LEVELS.forEach(function(l,i){ if(n>=l.min) L=i; }); return L; }
 
   function tryStart(){
     var nick=$('nick').value.trim();
     if(!nick){ $('nick-err').textContent='닉네임을 입력해 주세요.'; $('nick').focus(); return; }
     $('nick-err').textContent='';
-    st={nick:nick, i:0, res:[]};
-    $('v-start').hidden=true; $('game').hidden=false; load();
+    st={nick:nick, i:0, res:[], saved:false};
+    $('v-start').hidden=true; $('game').hidden=false; $('btn-restart').hidden=false; placeRestart(); load();
   }
   $('btn-start').addEventListener('click',tryStart);
   $('nick').addEventListener('keydown',function(e){ if(e.key==='Enter' && !e.isComposing && e.keyCode!==229){ e.preventDefault(); tryStart(); } });
@@ -574,6 +637,7 @@ var SONGS=["data:audio/wav;base64,UklGRtLJCQBXQVZFZm10IBAAAAABAAEAIlYAAESsAAACAB
   $('btn-next').addEventListener('click',goNext);
 
   function final(){
+    st.saved=true; $('btn-restart').hidden=true;
     $('game').hidden=true; MUSIC.stop();
     var n=st.res.filter(function(r){return r.ok;}).length, L=levelOf(n), lv=LEVELS[L];
     var got=st.res.reduce(function(a,r){return a+r.got;},0), tot=st.res.reduce(function(a,r){return a+r.tot;},0);
@@ -594,10 +658,7 @@ var SONGS=["data:audio/wav;base64,UklGRtLJCQBXQVZFZm10IBAAAAABAAEAIlYAAESsAAACAB
     $('f-sum').textContent='찾은 틀린 그림은 모두 '+got+'개 / '+tot+'개입니다.';
     $('v-final').hidden=false;
     MUSIC.fx('snd-clear');
-    var per={}; st.res.forEach(function(r){ per[r.title]=r.got; });
-    var rec={id:'s'+Date.now().toString(36)+Math.random().toString(36).slice(2,7), game:'spot', nick:st.nick, level:L+1, levelName:lv.name,
-      cleared:n, placeTotal:PLACES.length, found:got, total:tot, sec:st.res.reduce(function(a,r){return a+(r.sec||0);},0),
-      at:new Date().toISOString(), day:dayKey(new Date()), per:per};
+    var rec=buildRecord(false);
     var box=$('r-board'); box.innerHTML='<div class="board-msg">결과를 저장하는 중이에요…</div>';
     saveResult(rec).then(function(){ renderBoard(box, rec.id); }, function(){
       renderBoard(box, null);
