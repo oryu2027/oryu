@@ -222,9 +222,9 @@ label{font-size:13px;font-weight:500;color:var(--slate)}
         <label for="nick">닉네임</label>
         <input id="nick" maxlength="12" autocomplete="off" placeholder="예: 2학년 별빛탐험대">
         <span class="err" id="nick-err"></span>
-        <small class="ver">버전 2026-10-29 11:00 · 오른쪽 위 ▶ 버튼으로 배경 음악을 켜고 끌 수 있어요</small>
+        <small class="ver">버전 2026-10-29 13:20 · 오른쪽 위 ▶ 버튼으로 배경 음악을 켜고 끌 수 있어요</small>
         <div class="row"><button class="btn line" id="btn-board" type="button">참여 결과판</button><button class="btn main" id="btn-start" type="button">탐방 시작</button></div>
-        <a class="back" href="./#games">← 학교 안내 브로셔로 돌아가기</a>
+        <a class="back" href="https://oryu2027.github.io/oryu/#games">← 학교 안내 브로셔로 돌아가기</a>
       </div>
     </div></div>
   </div>
@@ -262,7 +262,7 @@ label{font-size:13px;font-weight:500;color:var(--slate)}
       <div class="grid10" id="r-grid"></div>
       <div class="board" id="r-board"></div>
       <div class="row"><button class="btn main" id="btn-again" type="button">탐방 시작</button><button class="btn line" id="btn-quit" type="button">그만하기</button></div>
-      <a class="back" href="./#games">← 학교 안내 브로셔로 돌아가기</a>
+      <a class="back" href="https://oryu2027.github.io/oryu/#games">← 학교 안내 브로셔로 돌아가기</a>
     </div></div>
   </div>
 </div>
@@ -563,7 +563,7 @@ var PANO={"front": "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAYEB
     });
     $('bar').hidden=true; $('chips').hidden=true; $('v-result').hidden=false;
     var per={}; KEYS.forEach(function(k){ per[SCENES[k].title]=state.found[k].filter(Boolean).length; });
-    var rec={id:'r'+Date.now().toString(36)+Math.random().toString(36).slice(2,7), nick:state.nick, found:n, total:TOTAL, places:seenN(), placeTotal:KEYS.length, sec:elapsed(), at:new Date().toISOString(), day:dayKey(new Date()), per:per};
+    var rec={id:'r'+Date.now().toString(36)+Math.random().toString(36).slice(2,7), game:'treasure', nick:state.nick, found:n, total:TOTAL, places:seenN(), placeTotal:KEYS.length, sec:elapsed(), at:new Date().toISOString(), day:dayKey(new Date()), per:per};
     var box=$('r-board');
     box.innerHTML='<div class="board-msg">결과를 저장하는 중이에요…</div>';
     saveResult(rec).then(function(){ renderBoard(box, rec.id); }, function(){
@@ -688,7 +688,7 @@ var PANO={"front": "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAYEB
   function loadResults(){
     return mode().then(function(m){
       if(m==='db') return getDb().then(function(db){ return db.collection('results').limit(1000).get(); }).then(function(snap){ return {m:m,rows:snap.docs.map(function(d){return d.data();})}; });
-      if(m==='sheet') return fetch(RESULT_URL+(RESULT_URL.indexOf('?')<0?'?':'&')+'t='+Date.now()).then(function(r){return r.json();}).then(function(j){ return {m:m,rows:(j.rows||[])}; });
+      if(m==='sheet') return fetch(RESULT_URL+(RESULT_URL.indexOf('?')<0?'?':'&')+'game=treasure&t='+Date.now()).then(function(r){return r.json();}).then(function(j){ return {m:m,rows:(j.rows||[])}; });
       return {m:m,rows:readLocal()};
     });
   }
@@ -751,6 +751,9 @@ var PANO={"front": "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAYEB
     });
   }
   $('btn-board').addEventListener('click',function(){ $('v-board').hidden=false; renderBoard($('b-board')); });
+  // 브로셔로 돌아가기: GitHub Pages에서는 같은 저장소의 브로셔로(계정이 바뀌어도 그대로 동작), 그 밖에는 브로셔 주소로
+  (function(){ var href=/\.github\.io$/.test(location.hostname) ? 'index.html#games' : 'https://oryu2027.github.io/oryu/#games';
+    Array.prototype.forEach.call(document.querySelectorAll('a.back'),function(a){ a.href=href; }); })();
   $('btn-board-close').addEventListener('click',function(){ $('v-board').hidden=true; });
 
   // ---- 엑셀(xlsx) 파일 만들기: 외부 라이브러리 없이 직접 생성 ----
