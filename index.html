@@ -21,19 +21,20 @@
   --fg:var(--ink);
   --bg:var(--paper);
   --card:#F7F8F4;
+  --life-bg:#FFFFFF;
   --serif:"Gowun Batang",'Nanum Myeongjo',Batang,serif;
   --sans:"IBM Plex Sans KR","Malgun Gothic",system-ui,sans-serif;
 }
 @media (prefers-color-scheme: dark){
   :root:not([data-theme="light"]){
-    --paper:#0B1520; --paper-2:#132030; --card:#122031;
+    --paper:#0B1520; --paper-2:#132030; --card:#122031; --life-bg:#101B28;
     --fg:#E8ECE6; --bg:#0B1520; --ink:#E8ECE6;
     --jade:#57B3A6; --gold:#E0B25C; --slate:#9CAAB4;
     --line:rgba(232,236,230,.18);
   }
 }
 :root[data-theme="dark"]{
-  --paper:#0B1520; --paper-2:#132030; --card:#122031;
+  --paper:#0B1520; --paper-2:#132030; --card:#122031; --life-bg:#101B28;
   --fg:#E8ECE6; --bg:#0B1520; --ink:#E8ECE6;
   --jade:#57B3A6; --gold:#E0B25C; --slate:#9CAAB4;
   --line:rgba(232,236,230,.18);
@@ -149,6 +150,7 @@ section{padding:92px 0}
 .spot-card b{display:block;font-family:var(--serif);font-size:19px;font-weight:700;margin-bottom:8px}
 .spot-card small{display:block;font-size:14px;line-height:1.6;color:var(--slate);font-weight:300;word-break:keep-all}
 
+.life{background:var(--life-bg)}
 .life .rows{border-top:1px solid var(--line)}
 .life .row{display:grid;grid-template-columns:minmax(0,4fr) minmax(0,8fr);gap:40px;
   padding:28px 0;border-bottom:1px solid var(--line);align-items:start}
