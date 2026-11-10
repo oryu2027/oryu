@@ -216,7 +216,7 @@ label{font-size:13px;font-weight:500;color:var(--slate)}
       <label for="nick">닉네임</label>
       <input id="nick" maxlength="12" autocomplete="off" placeholder="예: 2학년 매의눈">
       <span class="err" id="nick-err"></span>
-      <small class="ver">버전 2026-11-10 14:30 · 오른쪽 위 ▶ 버튼으로 배경 음악을 켜고 끌 수 있어요</small>
+      <small class="ver">버전 2026-11-10 15:40 · 오른쪽 위 ▶ 버튼으로 배경 음악을 켜고 끌 수 있어요</small>
       <div class="row"><button class="btn line" id="btn-board" type="button">참여 결과판</button><button class="btn main" id="btn-start" type="button">시작하기</button></div>
     </div>
   </div></div>
@@ -351,6 +351,9 @@ var SONGS=["data:audio/wav;base64,UklGRtLJCQBXQVZFZm10IBAAAAABAAEAIlYAAESsAAACAB
   function dayLabel(k){ var m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(k); if(!m) return k; var d=new Date(+m[1],+m[2]-1,+m[3]); return (+m[2])+'월 '+(+m[3])+'일('+'일월화수목금토'[d.getDay()]+')'+(k===dayKey(new Date())?' · 오늘':''); }
   var allRows=[], lastRows=[], lastMode='local', lastDay='', adminKey='';
   var DETAIL_HEAD=['순위','닉네임','레벨','완료 장소','찾은 곳','시간','참여'];
+  function secKo(v){ v=Math.round(Number(v)||0); var m=Math.floor(v/60), c=v%60; return m ? m+'분'+(c ? ' '+c+'초' : '') : c+'초'; }
+  var PUBLIC_HEAD=['순위','닉네임','완료 장소','걸린 시간'];
+  function publicCells(r,i){ var ok=(r.cleared!=null && r.placeTotal!=null); return [String(i+1), r.nick, ok ? r.cleared+' / '+r.placeTotal : '-', r.sec!=null ? secKo(r.sec) : '-']; }
   function detailCells(r,i){ return [String(i+1), r.nick, 'Lv.'+r.level, r.cleared+' / '+r.placeTotal, r.found+' / '+r.total, fmt(r.sec), when(r.at)]; }
   // view: 'public'(순위·닉네임) | 'admin'(상세 정보·엑셀) | 'login'(비밀번호 입력)
   function renderBoard(box, me, pickDay, view, err){
@@ -387,12 +390,12 @@ var SONGS=["data:audio/wav;base64,UklGRtLJCQBXQVZFZm10IBAAAAABAAEAIlYAAESsAAACAB
       lastRows=ranked(sel==='all'?allRows:allRows.filter(function(r){return dayOf(r)===sel;}));
       var wrap=document.createElement('div'); wrap.className='tbl-wrap';
       var t=document.createElement('table'); t.className='tbl'+(admin?'':' pub');
-      var hd=admin?DETAIL_HEAD:['순위','닉네임'];
+      var hd=admin?DETAIL_HEAD:PUBLIC_HEAD;
       t.innerHTML='<thead><tr>'+hd.map(function(h){return '<th>'+h+'</th>';}).join('')+'</tr></thead><tbody></tbody>';
       var meRow=null;
       lastRows.forEach(function(r,i){
         var tr=document.createElement('tr');
-        (admin?detailCells(r,i):[String(i+1), r.nick]).forEach(function(v,j){ var td=document.createElement('td'); td.textContent=v; if(j===0) td.className='rk'; if(j===1) td.className='nk'; tr.appendChild(td); });
+        (admin?detailCells(r,i):publicCells(r,i)).forEach(function(v,j){ var td=document.createElement('td'); td.textContent=v; if(j===0) td.className='rk'; if(j===1) td.className='nk'; tr.appendChild(td); });
         if(admin && (r.quit || /중간 종료/.test(r.levelName||''))){ var q=document.createElement('span'); q.className='tag-quit'; q.textContent='중간 종료'; tr.children[1].appendChild(q); }
         if(me && r.id===me){ tr.className='me'; meRow=tr; }
         t.tBodies[0].appendChild(tr);
