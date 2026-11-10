@@ -117,6 +117,12 @@ a.backlink.back{text-decoration:none}
 .board-msg{font-size:13.5px;color:var(--slate);padding:6px 0}
 .board-msg.bad{color:var(--miss)}
 .row.split{justify-content:space-between;align-items:center}
+.tbl.pub td,.tbl.pub th{font-size:14px}
+.board-actions{display:inline-flex;gap:10px;align-items:center;flex-wrap:wrap;justify-content:flex-end;margin-left:auto}
+.admin-link{font:inherit;font-size:12.5px;color:var(--slate);background:none;border:0;padding:4px 2px;cursor:pointer;text-decoration:underline;text-underline-offset:3px}
+.admin-link:hover{color:var(--jade)}
+.admin-form{display:flex;gap:8px;flex-wrap:wrap}
+.admin-form input{flex:1 1 180px;min-width:0;font:inherit;font-size:16px;padding:10px 12px;border-radius:10px;border:1px solid var(--line);background:var(--bg);color:var(--fg)}
 .day-pick{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--slate);width:100%}
 .day-pick select{font:inherit;font-size:14px;color:var(--fg);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:6px 10px;max-width:100%}
 .ver{font-size:11.5px;color:var(--slate)}
@@ -210,7 +216,7 @@ label{font-size:13px;font-weight:500;color:var(--slate)}
       <label for="nick">닉네임</label>
       <input id="nick" maxlength="12" autocomplete="off" placeholder="예: 2학년 매의눈">
       <span class="err" id="nick-err"></span>
-      <small class="ver">버전 2026-10-29 16:40 · 오른쪽 위 ▶ 버튼으로 배경 음악을 켜고 끌 수 있어요</small>
+      <small class="ver">버전 2026-11-10 14:30 · 오른쪽 위 ▶ 버튼으로 배경 음악을 켜고 끌 수 있어요</small>
       <div class="row"><button class="btn line" id="btn-board" type="button">참여 결과판</button><button class="btn main" id="btn-start" type="button">시작하기</button></div>
     </div>
   </div></div>
@@ -308,7 +314,7 @@ var SONGS=["data:audio/wav;base64,UklGRtLJCQBXQVZFZm10IBAAAAABAAEAIlYAAESsAAACAB
 
   // ================= 참여 결과 모으기 =================
   // GitHub Pages에 올린 파일에서 반 전체 결과를 모으려면, 구글 시트 Apps Script 웹 앱 주소를 아래에 붙여 넣으세요.
-  var RESULT_URL = 'https://script.google.com/macros/s/AKfycbz2Zk_wnVURZkBr7wHmJ9K6Qx0C1_vJ6zq2cwJyv7w7N2BaDMA5EsZxPZjrDFgE0xzr6Q/exec';   // 보물찾기와 같은 주소를 쓰면 됩니다(틀린그림 결과는 시트의 다른 탭에 저장)
+  var RESULT_URL = 'https://script.google.com/macros/s/AKfycbwwAFx1iPQunAxtNLtab0rYwF9FjSZHV_DZfKwra_dVKsv39v6ZSwHzBiFEMxN4n3Pl/exec';   // 보물찾기와 같은 주소를 쓰면 됩니다(틀린그림 결과는 시트의 다른 탭에 저장)
   var LOCAL_KEY = 'oryu-spot-results';
   var dbP = null;
   function getDb(){
@@ -325,24 +331,35 @@ var SONGS=["data:audio/wav;base64,UklGRtLJCQBXQVZFZm10IBAAAAABAAEAIlYAAESsAAACAB
       var a=readLocal(); a.push(rec); try{ localStorage.setItem(LOCAL_KEY,JSON.stringify(a)); }catch(e){ throw {code:'local'}; }
     });
   }
-  function loadResults(){
+  // 결과 불러오기. 구글 시트 모드에서는 스크립트가 순위·닉네임만 보내고, 관리자 비밀번호가 맞을 때만 상세 정보를 보냅니다.
+  function loadResults(key){
     return mode().then(function(m){
-      if(m==='db') return getDb().then(function(db){ return db.collection('results').limit(1000).get(); }).then(function(snap){ return {m:m,rows:snap.docs.map(function(d){return d.data();})}; });
-      if(m==='sheet') return fetch(RESULT_URL+(RESULT_URL.indexOf('?')<0?'?':'&')+'game=spot&t='+Date.now()).then(function(r){return r.json();}).then(function(j){ return {m:m,rows:(j.rows||[])}; });
-      return {m:m,rows:readLocal()};
+      if(m==='db') return getDb().then(function(db){ return db.collection('results').limit(1000).get(); }).then(function(snap){ return {m:m,admin:true,rows:snap.docs.map(function(d){return d.data();})}; });
+      if(m==='sheet') return fetch(RESULT_URL+(RESULT_URL.indexOf('?')<0?'?':'&')+'game=spot'+(key?'&key='+encodeURIComponent(key):'')+'&t='+Date.now())
+        .then(function(r){return r.json();}).then(function(j){ return {m:m,admin:!!j.admin,rows:(j.rows||[])}; });
+      return {m:m,admin:true,rows:readLocal()};
     });
   }
   function ranked(rows){
+    rows=rows.filter(function(r){return r && r.nick;});
+    if(rows.length && rows[0].found===undefined) return rows;   // 학생용 목록: 이미 순위 순서
     return rows.filter(function(r){return r && r.nick;}).slice().sort(function(a,b){ return (b.cleared-a.cleared)||(b.found-a.found)||(a.sec-b.sec)||String(a.at).localeCompare(String(b.at)); });
   }
   function when(iso){ var d=new Date(iso); if(isNaN(d)) return ''; function p(n){return (n<10?'0':'')+n;} return (d.getMonth()+1)+'/'+d.getDate()+' '+p(d.getHours())+':'+p(d.getMinutes()); }
   function dayKey(d){ function p(n){return (n<10?'0':'')+n;} return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate()); }
   function dayOf(r){ if(r.day && /^\d{4}-\d{2}-\d{2}$/.test(r.day)) return r.day; var d=new Date(r.at); return isNaN(d)?'날짜 없음':dayKey(d); }
   function dayLabel(k){ var m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(k); if(!m) return k; var d=new Date(+m[1],+m[2]-1,+m[3]); return (+m[2])+'월 '+(+m[3])+'일('+'일월화수목금토'[d.getDay()]+')'+(k===dayKey(new Date())?' · 오늘':''); }
-  var allRows=[], lastRows=[], lastMode='local', lastDay='';
-  function renderBoard(box, me, pickDay){
-    box.innerHTML='<div class="board-head"><h3>참여자 결과</h3><small></small></div><div class="board-msg">결과를 불러오는 중이에요…</div>';
-    loadResults().then(function(res){
+  var allRows=[], lastRows=[], lastMode='local', lastDay='', adminKey='';
+  var DETAIL_HEAD=['순위','닉네임','레벨','완료 장소','찾은 곳','시간','참여'];
+  function detailCells(r,i){ return [String(i+1), r.nick, 'Lv.'+r.level, r.cleared+' / '+r.placeTotal, r.found+' / '+r.total, fmt(r.sec), when(r.at)]; }
+  // view: 'public'(순위·닉네임) | 'admin'(상세 정보·엑셀) | 'login'(비밀번호 입력)
+  function renderBoard(box, me, pickDay, view, err){
+    view=view||'public';
+    if(view==='login') return renderLogin(box, me, pickDay, err);
+    var admin=(view==='admin');
+    box.innerHTML='<div class="board-head"><h3>'+(admin?'관리자 · 참여자 상세 결과':'참여자 순위')+'</h3><small></small></div><div class="board-msg">결과를 불러오는 중이에요…</div>';
+    loadResults(admin?adminKey:'').then(function(res){
+      if(admin && !res.admin){ adminKey=''; return renderBoard(box, me, pickDay, 'login', '비밀번호가 맞지 않아요. 다시 입력해 주세요.'); }
       lastMode=res.m; allRows=res.rows.filter(function(r){return r && r.nick;});
       var days={}; allRows.forEach(function(r){ var k=dayOf(r); days[k]=(days[k]||0)+1; });
       var keys=Object.keys(days).sort().reverse();
@@ -350,49 +367,76 @@ var SONGS=["data:audio/wav;base64,UklGRtLJCQBXQVZFZm10IBAAAAABAAEAIlYAAESsAAACAB
       var sel = pickDay && (pickDay==='all'||days[pickDay]) ? pickDay : (days[today] ? today : (keys[0]||'all'));
       lastDay=sel;
       var head=box.querySelector('.board-head');
-      head.querySelector('small').textContent=MODE_LABEL[res.m]+' · 모두 '+allRows.length+'명 · '+keys.length+'일';
+      head.querySelector('small').textContent= admin ? MODE_LABEL[res.m]+' · 모두 '+allRows.length+'명 · '+keys.length+'일' : '모두 '+allRows.length+'명';
       var msg=box.querySelector('.board-msg');
-      if(res.m==='local'){
+      if(admin && res.m==='local'){
         var warn=document.createElement('div'); warn.className='board-msg bad';
         warn.textContent='지금은 이 컴퓨터의 브라우저에만 저장돼요. PC 초기화나 방문 기록 삭제 때 사라지니, 날짜별로 계속 모으려면 구글 시트를 연결해 주세요.';
         box.insertBefore(warn, msg);
       }
-      if(!allRows.length){ msg.textContent='아직 참여 기록이 없어요. 첫 번째 명탐정이 되어 보세요!'; return; }
+      if(!allRows.length){ msg.textContent='아직 참여 기록이 없어요. 첫 번째 명탐정이 되어 보세요!'; footer(box, me, sel, admin); return; }
       msg.remove();
-      // 날짜 고르기
       var pick=document.createElement('label'); pick.className='day-pick';
       pick.innerHTML='<span>날짜</span><select id="'+box.id+'-day"></select>';
       var se=pick.querySelector('select');
       keys.forEach(function(k){ var o=document.createElement('option'); o.value=k; o.textContent=dayLabel(k)+' — '+days[k]+'명'; se.appendChild(o); });
       var oa=document.createElement('option'); oa.value='all'; oa.textContent='전체 날짜 — '+allRows.length+'명'; se.appendChild(oa);
       se.value=sel;
-      se.addEventListener('change',function(){ renderBoard(box, me, se.value); });
+      se.addEventListener('change',function(){ renderBoard(box, me, se.value, view); });
       head.appendChild(pick);
       lastRows=ranked(sel==='all'?allRows:allRows.filter(function(r){return dayOf(r)===sel;}));
       var wrap=document.createElement('div'); wrap.className='tbl-wrap';
-      var t=document.createElement('table'); t.className='tbl';
-      t.innerHTML='<thead><tr><th>순위</th><th>닉네임</th><th>레벨</th><th>완료 장소</th><th>찾은 곳</th><th>시간</th><th>참여</th></tr></thead><tbody></tbody>';
+      var t=document.createElement('table'); t.className='tbl'+(admin?'':' pub');
+      var hd=admin?DETAIL_HEAD:['순위','닉네임'];
+      t.innerHTML='<thead><tr>'+hd.map(function(h){return '<th>'+h+'</th>';}).join('')+'</tr></thead><tbody></tbody>';
       var meRow=null;
       lastRows.forEach(function(r,i){
         var tr=document.createElement('tr');
-        [String(i+1), r.nick, 'Lv.'+r.level, r.cleared+' / '+r.placeTotal, r.found+' / '+r.total, fmt(r.sec), when(r.at)].forEach(function(v,j){ var td=document.createElement('td'); td.textContent=v; if(j===0) td.className='rk'; if(j===1) td.className='nk'; tr.appendChild(td); });
-        if(r.quit || /중간 종료/.test(r.levelName||'')){ var q=document.createElement('span'); q.className='tag-quit'; q.textContent='중간 종료'; tr.children[1].appendChild(q); }
+        (admin?detailCells(r,i):[String(i+1), r.nick]).forEach(function(v,j){ var td=document.createElement('td'); td.textContent=v; if(j===0) td.className='rk'; if(j===1) td.className='nk'; tr.appendChild(td); });
+        if(admin && (r.quit || /중간 종료/.test(r.levelName||''))){ var q=document.createElement('span'); q.className='tag-quit'; q.textContent='중간 종료'; tr.children[1].appendChild(q); }
         if(me && r.id===me){ tr.className='me'; meRow=tr; }
         t.tBodies[0].appendChild(tr);
       });
       wrap.appendChild(t); box.appendChild(wrap);
-      var row=document.createElement('div'); row.className='row split';
-      var st=document.createElement('span'); st.className='board-msg';
-      var bt=document.createElement('button'); bt.type='button'; bt.className='btn line'; bt.textContent='엑셀로 내려받기 (날짜별 시트)';
-      bt.addEventListener('click',function(){ downloadXlsx(st); });
-      row.appendChild(st); row.appendChild(bt); box.appendChild(row);
+      footer(box, me, sel, admin);
       if(meRow) setTimeout(function(){ wrap.scrollTop=Math.max(0, meRow.offsetTop-wrap.clientHeight/2); },50);
     }).catch(function(){
       var msg=box.querySelector('.board-msg'); if(!msg) return; msg.className='board-msg bad'; msg.textContent='결과를 불러오지 못했어요. 인터넷 연결을 확인한 뒤 다시 열어 주세요.';
     });
   }
+  function footer(box, me, sel, admin){
+    var row=document.createElement('div'); row.className='row split';
+    var st=document.createElement('span'); st.className='board-msg';
+    var right=document.createElement('span'); right.className='board-actions';
+    if(admin){
+      var bt=document.createElement('button'); bt.type='button'; bt.className='btn line'; bt.textContent='엑셀로 내려받기 (날짜별 시트)';
+      bt.addEventListener('click',function(){ downloadXlsx(st); });
+      var out=document.createElement('button'); out.type='button'; out.className='admin-link'; out.textContent='관리자 화면 닫기';
+      out.addEventListener('click',function(){ adminKey=''; renderBoard(box, me, sel, 'public'); });
+      right.appendChild(out); right.appendChild(bt);
+    } else {
+      var ad=document.createElement('button'); ad.type='button'; ad.className='admin-link'; ad.textContent='관리자';
+      ad.addEventListener('click',function(){ renderBoard(box, me, sel, lastMode==='sheet'?'login':'admin'); });
+      right.appendChild(ad);
+    }
+    row.appendChild(st); row.appendChild(right); box.appendChild(row);
+  }
+  function renderLogin(box, me, sel, err){
+    box.innerHTML='<div class="board-head"><h3>관리자 확인</h3></div>'+
+      '<p class="board-msg">상세 결과와 엑셀 내려받기는 관리자 비밀번호를 입력해야 볼 수 있어요.</p>'+
+      '<div class="admin-form"><input type="password" id="'+box.id+'-pw" autocomplete="off" placeholder="관리자 비밀번호" aria-label="관리자 비밀번호">'+
+      '<button type="button" class="btn main">확인</button><button type="button" class="btn line">취소</button></div>'+
+      '<div class="board-msg bad"></div>';
+    var pw=box.querySelector('input'), bs=box.querySelectorAll('.admin-form button');
+    box.querySelector('.board-msg.bad').textContent=err||'';
+    function go(){ var v=pw.value.trim(); if(!v){ pw.focus(); return; } adminKey=v; renderBoard(box, me, sel, 'admin'); }
+    bs[0].addEventListener('click',go);
+    bs[1].addEventListener('click',function(){ renderBoard(box, me, sel, 'public'); });
+    pw.addEventListener('keydown',function(e){ if(e.key==='Enter' && !e.isComposing){ e.preventDefault(); go(); } });
+    setTimeout(function(){ pw.focus(); },30);
+  }
   $('btn-board').addEventListener('click',function(){ $('v-board').hidden=false; renderBoard($('b-board')); });
-  $('btn-board-close').addEventListener('click',function(){ $('v-board').hidden=true; });
+  $('btn-board-close').addEventListener('click',function(){ $('v-board').hidden=true; adminKey=''; });
 
   // ---- 엑셀(xlsx) 파일 만들기: 외부 라이브러리 없이 직접 생성 ----
   function xesc(v){ return String(v).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}).replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F]/g,''); }
